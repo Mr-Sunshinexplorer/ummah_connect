@@ -37,7 +37,7 @@ dependencies:
   http: ^1.1.0
   
   # P2P Chat
-  flutter_webrtc: ^0.9.48
+  flutter_webrtc: ^0.12.5+hotfix.1  # Updated version
   web_socket_channel: ^2.4.0
   
   # File Storage

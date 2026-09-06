@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import 'home/home_screen.dart';
 import 'quran/surah_list_screen.dart';
+import 'hadith/hadith_home_screen.dart';
+import 'duas/duas_home_screen.dart';
 import 'learn/learn_screen.dart';
 import 'masjid/masjid_screen.dart';
 import 'community/community_screen.dart';
+import 'profile/profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,11 +20,14 @@ class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const HomeScreen(),
-    const SurahListScreen(), // Quran Screen
-    const LearnScreen(),
-    const MasjidScreen(),
-    const CommunityScreen(),
+    const HomeScreen(),           // Home
+    const SurahListScreen(),      // Quran
+    const HadithHomeScreen(),     // Hadith
+    const DuasHomeScreen(),       // Duas
+    const LearnScreen(),          // Learn
+    const MasjidScreen(),         // Masjid
+    const CommunityScreen(),      // Community
+    const ProfileScreen(),        // Profile
   ];
 
   @override
@@ -35,7 +41,7 @@ class _MainNavigationState extends State<MainNavigation> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -64,6 +70,16 @@ class _MainNavigationState extends State<MainNavigation> {
               label: 'Quran',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.format_quote_outlined),
+              activeIcon: Icon(Icons.format_quote),
+              label: 'Hadith',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.volunteer_activism_outlined),
+              activeIcon: Icon(Icons.volunteer_activism),
+              label: 'Duas',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.school_outlined),
               activeIcon: Icon(Icons.school),
               label: 'Learn',
@@ -74,9 +90,14 @@ class _MainNavigationState extends State<MainNavigation> {
               label: 'Masjid',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
+              icon: Icon(Icons.people_outline),
+              activeIcon: Icon(Icons.people),
               label: 'Community',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
             ),
           ],
         ),
