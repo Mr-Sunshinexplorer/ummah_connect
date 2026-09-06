@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/secrets.dart' show AppSecrets;
 
-
 class GitHubStorageService {
-  // Use values from secrets.dart (not hardcoded)
+  // Use values from secrets.dart
   static String get _owner => AppSecrets.githubUsername;
   static String get _token => AppSecrets.githubToken;
   static const String _repo = 'ummah_connect';
@@ -42,28 +42,28 @@ class GitHubStorageService {
     return [];
   }
   
-  // Write data to GitHub (requires personal access token)
-  Future<bool> writeData(String path, Map<String, dynamic> data, {String? token}) async {
-    if (token == null) {
-      print('GitHub token required for writing');
+  // Write data to GitHub
+  Future<bool> writeData(String path, Map<String, dynamic> data) async {
+    if (_token == 'YOUR_GITHUB_TOKEN_HERE' || _token.isEmpty) {
+      print('Please set your GitHub token in lib/config/secrets.dart');
       return false;
     }
     
     try {
-      // Check if file exists
-      final existingFile = await _getFileSha(path, token);
+      final existingSha = await _getFileSha(path);
       
       final response = await http.put(
         Uri.parse('https://api.github.com/repos/$_owner/$_repo/contents/$path'),
         headers: {
-          'Authorization': 'token $token',
+          'Authorization': 'token $_token',
           'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json',
         },
         body: json.encode({
           'message': 'Update $path',
           'content': base64.encode(utf8.encode(json.encode(data))),
           'branch': _branch,
-          if (existingFile != null) 'sha': existingFile,
+          if (existingSha != null) 'sha': existingSha,
         }),
       );
       
@@ -74,12 +74,20 @@ class GitHubStorageService {
     }
   }
   
-  // Get file SHA (needed for updates)
-  Future<String?> _getFileSha(String path, String token) async {
+  // Write list to GitHub
+  Future<bool> writeList(String path, List<dynamic> data) async {
+    return await writeData(path, {'data': data});
+  }
+  
+  // Get file SHA
+  Future<String?> _getFileSha(String path) async {
     try {
       final response = await http.get(
         Uri.parse('https://api.github.com/repos/$_owner/$_repo/contents/$path'),
-        headers: {'Authorization': 'token $token'},
+        headers: {
+          'Authorization': 'token $_token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
       );
       
       if (response.statusCode == 200) {
@@ -92,37 +100,13 @@ class GitHubStorageService {
     return null;
   }
   
-  // Create repository (one-time setup)
-  Future<bool> createRepository(String token) async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.github.com/user/repos'),
-        headers: {
-          'Authorization': 'token $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'name': _repo,
-          'description': 'Ummah Connect Data Storage',
-          'public': true,
-          'auto_init': true,
-        }),
-      );
-      
-      return response.statusCode == 201;
-    } catch (e) {
-      print('Error creating repo: $e');
-      return false;
-    }
-  }
-  
   // Upload file to GitHub
-  Future<bool> uploadFile(String path, String content, String token) async {
+  Future<bool> uploadFile(String path, String content) async {
     try {
       final response = await http.put(
         Uri.parse('https://api.github.com/repos/$_owner/$_repo/contents/$path'),
         headers: {
-          'Authorization': 'token $token',
+          'Authorization': 'token $_token',
           'Content-Type': 'application/json',
         },
         body: json.encode({
@@ -144,6 +128,10 @@ class GitHubStorageService {
     try {
       final response = await http.get(
         Uri.parse('https://api.github.com/repos/$_owner/$_repo/contents/$path'),
+        headers: {
+          'Authorization': 'token $_token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
       );
       
       if (response.statusCode == 200) {
@@ -156,15 +144,15 @@ class GitHubStorageService {
   }
   
   // Delete file from GitHub
-  Future<bool> deleteFile(String path, String token) async {
+  Future<bool> deleteFile(String path) async {
     try {
-      final sha = await _getFileSha(path, token);
+      final sha = await _getFileSha(path);
       if (sha == null) return false;
       
       final response = await http.delete(
         Uri.parse('https://api.github.com/repos/$_owner/$_repo/contents/$path'),
         headers: {
-          'Authorization': 'token $token',
+          'Authorization': 'token $_token',
           'Content-Type': 'application/json',
         },
         body: json.encode({
@@ -179,5 +167,60 @@ class GitHubStorageService {
       print('Error deleting file: $e');
       return false;
     }
+  }
+  
+  // ============ HIGH-LEVEL METHODS ============
+  
+  // Store chat messages
+  Future<bool> storeChatMessages(List<Map<String, dynamic>> messages) async {
+    return await writeData('data/chat_messages.json', {
+      'messages': messages,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+  
+  // Read chat messages
+  Future<List<Map<String, dynamic>>> readChatMessages() async {
+    final data = await readData('data/chat_messages.json');
+    return List<Map<String, dynamic>>.from(data['messages'] ?? []);
+  }
+  
+  // Store posts
+  Future<bool> storePosts(List<Map<String, dynamic>> posts) async {
+    return await writeData('data/posts.json', {
+      'posts': posts,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+  
+  // Read posts
+  Future<List<Map<String, dynamic>>> readPosts() async {
+    final data = await readData('data/posts.json');
+    return List<Map<String, dynamic>>.from(data['posts'] ?? []);
+  }
+  
+  // Store user data
+  Future<bool> storeUserData(Map<String, dynamic> userData) async {
+    final userId = userData['id'] ?? 'anonymous';
+    return await writeData('data/users/$userId.json', userData);
+  }
+  
+  // Read user data
+  Future<Map<String, dynamic>> readUserData(String userId) async {
+    return await readData('data/users/$userId.json');
+  }
+  
+  // Store global feed
+  Future<bool> storeGlobalFeed(List<Map<String, dynamic>> feed) async {
+    return await writeData('data/global_feed.json', {
+      'feed': feed,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+  
+  // Read global feed
+  Future<List<Map<String, dynamic>>> readGlobalFeed() async {
+    final data = await readData('data/global_feed.json');
+    return List<Map<String, dynamic>>.from(data['feed'] ?? []);
   }
 }
